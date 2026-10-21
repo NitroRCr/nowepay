@@ -1,0 +1,42 @@
+# Copy to config.yaml. ${VAR} / ${VAR:-default} are expanded from the environment.
+server:
+  port: 3000
+  # Public HTTPS URL of this gateway; upstream callbacks go to {publicUrl}/notify/{kind}/{id}
+  publicUrl: https://pay.example.com
+
+database:
+  path: /data/nowepay.sqlite
+
+notify:
+  # Retry delays (seconds) for callbacks to new-api; gives up after the last one.
+  retryDelays: [15, 60, 300, 900, 1800, 3600, 7200, 21600]
+  timeoutMs: 10000
+
+# Downstream merchants. In new-api: EpayId = pid, EpayKey = key, PayAddress = publicUrl.
+merchants:
+  - pid: "1001"
+    key: ${NEWAPI_EPAY_KEY}
+
+# Each channel handles the listed `types` (must match `type` in new-api PayMethods).
+# upstream amount = money * rate, rounded half-up to `precision` digits.
+channels:
+  - id: crypto
+    kind: nowpayments
+    types: [crypto]
+    rate: "1"
+    precision: 2
+    apiKey: ${NOWPAY_API_KEY}
+    ipnSecret: ${NOWPAY_IPN_SECRET}
+    priceCurrency: usd
+    # payCurrency: usdttrc20   # optional: fix the coin instead of letting payer choose
+
+  - id: wx-a
+    kind: epay
+    types: [wxpay]
+    rate: "7"
+    precision: 2
+    baseUrl: https://upstream-a.example.com
+    submitPath: /submit.php
+    pid: ${WX_A_PID}
+    key: ${WX_A_KEY}
+    typeMap: { wxpay: wxpay }  # downstream type -> upstream type

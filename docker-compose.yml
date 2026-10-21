@@ -1,0 +1,13 @@
+services:
+  nowepay:
+    build: .
+    image: nowepay:latest
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3000:3000" # put a TLS reverse proxy in front
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - nowepay-data:/data
+volumes:
+  nowepay-data:
