@@ -4,7 +4,7 @@ import { NowpaymentsChannel } from "./channels/nowpayments.ts";
 import type { Channel } from "./channels/types.ts";
 import type { ChannelConfig, Config } from "./config.ts";
 import type { Store } from "./db.ts";
-import { readParams, verifyEpay, type Params } from "./epay/sign.ts";
+import { keyFingerprint, readParams, signString, verifyEpay, type Params } from "./epay/sign.ts";
 import { errorPage } from "./html.ts";
 import { log } from "./log.ts";
 import { compare, isDecimal, mulRound, normalize } from "./money.ts";
@@ -56,7 +56,17 @@ export function createApp({ config, store, notifier, fetchImpl = fetch }: AppDep
     const p: Params = await readParams(req);
     const merchant = p.pid ? merchants.get(p.pid) : undefined;
     if (!merchant) return errorPage("商户不存在");
-    if (!verifyEpay(p, merchant.key)) return errorPage("签名校验失败");
+    if (!verifyEpay(p, merchant.key)) {
+      log.warn("submit signature mismatch", {
+        method: req.method,
+        content_type: req.headers.get("content-type"),
+        query: new URL(req.url).search,
+        sign_string: signString(p),
+        received_sign: p.sign ?? null,
+        merchant_key: keyFingerprint(merchant.key),
+      });
+      return errorPage("签名校验失败");
+    }
 
     const { type = "", out_trade_no = "", notify_url = "", return_url = "", name = "", money = "" } = p;
     if (!out_trade_no || !name) return errorPage("缺少必要参数");

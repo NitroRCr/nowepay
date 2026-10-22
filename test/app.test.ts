@@ -113,6 +113,16 @@ describe("submit", () => {
     expect(calls.length).toBe(1);
   });
 
+  test("ignores injected query params like ?_gl= on POST and GET", async () => {
+    const post = submitReq();
+    const withGl = new Request("https://gw.example.com/submit.php?_gl=1*abc*_ga*MTIz", { method: "POST", body: await post.text(), headers: post.headers });
+    expect((await app().fetch(withGl)).status).toBe(200);
+
+    const params = new URLSearchParams(await submitReq({ out_trade_no: "G1" }).text());
+    const get = new Request(`https://gw.example.com/submit.php?${params}&_gl=1*x&utm_source=y`);
+    expect((await app().fetch(get)).status).toBe(200);
+  });
+
   test("conflicting reuse of out_trade_no is rejected", async () => {
     const a = app();
     await a.fetch(submitReq());
